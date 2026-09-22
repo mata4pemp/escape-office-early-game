@@ -92,6 +92,35 @@
   #mmLegend{display:flex;gap:10px;margin-top:7px;font-size:9px;color:var(--ink-faint);letter-spacing:.08em;}
   #mmLegend i{display:inline-block;width:6px;height:6px;margin-right:4px;vertical-align:middle;}
 
+  /* last-lift countdown, right edge */
+  #countdown{grid-column:3;grid-row:2;justify-self:end;align-self:center;
+             display:flex;align-items:center;gap:11px;padding:12px 14px;}
+  #cdBarTrack{width:7px;height:150px;background:rgba(198,214,236,.12);position:relative;overflow:hidden;}
+  #cdBar{position:absolute;left:0;bottom:0;width:100%;height:100%;background:var(--steel);
+         transition:background .3s linear;}
+  #cdText{text-align:right;}
+  #cdLabel{font-family:"Barlow Condensed",system-ui,sans-serif;font-size:11px;letter-spacing:.2em;
+           text-transform:uppercase;color:var(--ink-faint);}
+  #cdTime{font-family:"Barlow Condensed",system-ui,sans-serif;font-size:42px;line-height:.88;font-weight:700;
+          font-variant-numeric:tabular-nums;margin-top:3px;}
+  #cdDest{font-size:10px;color:var(--ink-faint);letter-spacing:.1em;margin-top:4px;}
+  #countdown.warn #cdBar{background:var(--amber);}
+  #countdown.warn #cdTime{color:var(--amber);}
+  #countdown.crit #cdBar{background:var(--alarm);}
+  #countdown.crit #cdTime{color:var(--alarm);animation:tick .5s steps(2,end) infinite;}
+  @keyframes tick{50%{opacity:.35}}
+
+  /* death cinematic */
+  #stage{transition:filter 1.3s ease-out;}
+  #cine{position:fixed;inset:0;z-index:5;display:flex;flex-direction:column;
+        align-items:center;justify-content:flex-start;padding-top:13vh;pointer-events:none;
+        opacity:0;transform:scale(1.28);transition:opacity .9s ease-out, transform 2.4s cubic-bezier(.16,.8,.3,1);}
+  #cine.on{opacity:1;transform:scale(1);}
+  #cineWord{font-family:"Barlow Condensed",system-ui,sans-serif;font-weight:700;
+            font-size:clamp(62px,15vw,180px);line-height:.82;letter-spacing:.04em;
+            color:#e6e2d8;text-shadow:0 0 60px rgba(0,0,0,.95), 0 6px 0 rgba(0,0,0,.35);}
+  #cineSub{font-size:12px;letter-spacing:.34em;text-transform:uppercase;color:#9a938a;margin-top:16px;}
+
   #keys{grid-column:3;grid-row:3;align-self:end;text-align:right;transition:opacity .6s ease;}
   #keys div{font-size:11px;color:var(--ink-dim);line-height:1.85;}
   kbd{
@@ -152,6 +181,8 @@
     #keys{display:none;}
     #objective{max-width:70vw;}
     #clockTime{font-size:30px;}
+    #cdBarTrack{height:92px;}
+    #cdTime{font-size:32px;}
   }
   @media (prefers-reduced-motion:reduce){
     .prompt .dot{animation:none;}
@@ -198,6 +229,15 @@
     <div id="ringLabel">Exposure</div>
   </div>
 
+  <div id="countdown" class="plate">
+    <div id="cdText">
+      <div id="cdLabel">Last lift</div>
+      <div id="cdTime">3:00</div>
+      <div id="cdDest">departs 18:36</div>
+    </div>
+    <div id="cdBarTrack"><div id="cdBar"></div></div>
+  </div>
+
   <div id="keys" class="plate">
     <div><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move</div>
     <div><kbd>Shift</kbd> crouch &amp; sneak</div>
@@ -213,9 +253,10 @@
     <div class="kicker">Floor 12 · Sales · Friday</div>
     <h1>Quitting Time<span class="thin">你能准点下班吗？</span></h1>
     <p class="lede">
-      The clock hit six. Your bag is still on desk 12-C and the regional manager is doing his
-      last lap of the bullpen. Nobody is stopping you from leaving — they just have to not
-      <em>see</em> you leaving. One look and you are in a "quick chat" until seven.
+      The clock hit six. Your bag is still on desk 12-C, the regional manager is doing his
+      last lap of the bullpen, and the last lift goes at 18:36. Getting clocked from across
+      the floor only brings them walking — it is the one who reaches you that costs you your
+      evening. Miss the lift and you are here all night.
     </p>
     <div class="rule"></div>
     <div class="ctrlgrid">
@@ -227,6 +268,8 @@
     <div class="prompt"><span class="dot"></span> Press Enter to clock out</div>
   </div>
 </div>
+
+<div id="cine"><div id="cineWord">OVERTIME</div><div id="cineSub"></div></div>
 
 <div class="screen" id="endScreen">
   <div class="card">
@@ -260,6 +303,10 @@ const PLAYER_R = 0.36;
 const WALK = 3.5, SNEAK = 1.55;
 const EYE_STAND = 1.58, EYE_CROUCH = 0.86;
 const EXIT_X1 = 18.5, EXIT_X2 = 23.5;
+const TIME_LIMIT = 180;   // real seconds until the last lift goes — 36 office minutes
+const CATCH_DIST = 3.4;   // being clocked from across the floor only brings them walking;
+                          // only someone this close can actually corner you
+const CHASE_SPEED = 2.25;
 const BAG_POS = new THREE.Vector3(-15.9, 0.97, 13.32);
 const START_POS = new THREE.Vector3(-14.5, 0, 11.6);
 
@@ -287,7 +334,10 @@ const state = {
   exposure: 0,
   hasBag: false,
   caughtBy: null,
-  menuAngle: 0
+  menuAngle: 0,
+  dieT: 0,
+  dieKind: null,
+  tick: -1
 };
 
 const keys = Object.create(null);
@@ -809,17 +859,32 @@ function addNPC(cfg){
     headYaw: 0, scanT: Math.random()*6,
     speed: cfg.speed || 0,
     range: cfg.range, half, eye: cfg.eye || EYE_STAND,
-    seat: !!cfg.seat, exposure: 0, sees:false, alertHold:0
+    seat: !!cfg.seat, seated: !!cfg.seat, homeYaw: cfg.yaw || 0,
+    exposure: 0, alert: 0, sees:false,
+    chase: new THREE.Vector2(), chaseT: 0
   };
-  if (n.seat){
-    h.userData.legL.rotation.x = -1.4; h.userData.legR.rotation.x = -1.4;
-    h.userData.hips.position.y = .58;
-    h.userData.legL.children[0].position.y = -.42;
-    h.userData.legR.children[0].position.y = -.42;
-  }
+  if (n.seat) setSeated(n, true);
   h.rotation.y = n.yaw;
   npcs.push(n);
   return n;
+}
+
+// the seated floor manager gets up and comes after you once he is onto you
+function setSeated(n, on){
+  const u = n.obj.userData;
+  n.seated = on;
+  u.legL.rotation.x = on ? -1.4 : 0;
+  u.legR.rotation.x = on ? -1.4 : 0;
+  u.hips.position.y = on ? .58 : .92;
+  u.legL.children[0].position.y = on ? -.42 : -.43;
+  u.legR.children[0].position.y = on ? -.42 : -.43;
+}
+
+const _npcTmp = new THREE.Vector3();
+function resolveNPC(n){
+  _npcTmp.set(n.pos.x, 0, n.pos.y);
+  resolveCollisions(_npcTmp);
+  n.pos.x = _npcTmp.x; n.pos.y = _npcTmp.z;
 }
 
 function buildNPCs(){
@@ -948,7 +1013,7 @@ window.addEventListener('keydown', (e)=>{
     if (state.mode === 'menu') startRun();
     else if (state.mode === 'caught' || state.mode === 'escaped') startRun();
   }
-  if (k === 'r' && (state.mode === 'play' || state.mode === 'paused')) startRun();
+  if (k === 'r' && (state.mode === 'play' || state.mode === 'paused' || state.mode === 'dying')) startRun();
   if (k === 'escape' && state.mode === 'play'){ state.mode = 'paused'; showToast('Paused — Esc to resume', 1e6); }
   else if (k === 'escape' && state.mode === 'paused'){ state.mode = 'play'; hideToast(); }
 });
@@ -978,6 +1043,12 @@ const flashEl = document.getElementById('flash');
 const step1 = document.getElementById('step1'), step2 = document.getElementById('step2');
 const objTask = document.getElementById('objTask');
 const keysPanel = document.getElementById('keys');
+const cdWrap = document.getElementById('countdown');
+const cdTime = document.getElementById('cdTime');
+const cdBar  = document.getElementById('cdBar');
+const ringLabel = document.getElementById('ringLabel');
+const stageEl = document.getElementById('stage');
+const cineEl = document.getElementById('cine');
 const CIRC = 2 * Math.PI * 42;
 
 // the wall clock runs one office minute every five real seconds
@@ -997,10 +1068,30 @@ function hideToast(){ toastEl.classList.remove('show'); toastTimer = 0; }
 
 function updateHUD(dt){
   const e = state.exposure;
-  ringFill.setAttribute('stroke-dasharray', (CIRC*e).toFixed(1) + ' ' + CIRC);
-  ringFill.style.stroke = e > .66 ? '#e04b3c' : e > .33 ? '#e8a33d' : '#7e8b9c';
-  ringPct.textContent = Math.round(e*100);
-  expWrap.classList.toggle('hot', e > .66);
+  let alert = 0;
+  for (const n of npcs) if (n.alert > alert) alert = n.alert;
+
+  // the ring shows how close someone is to actually cornering you;
+  // the label says whether you have merely been clocked from a distance
+  const shown = e > 0 ? e : alert * .5;
+  ringFill.setAttribute('stroke-dasharray', (CIRC*shown).toFixed(1) + ' ' + CIRC);
+  ringFill.style.stroke = e > 0 ? (e > .6 ? '#e04b3c' : '#e8a33d') : '#7e8b9c';
+  ringPct.textContent = Math.round(shown*100);
+  ringLabel.textContent = e > 0 ? 'Cornered' : (alert > .35 ? 'Spotted' : 'Exposure');
+  expWrap.classList.toggle('hot', e > .5);
+
+  // last lift
+  const left = Math.max(0, TIME_LIMIT - state.t);
+  cdTime.textContent = Math.floor(left/60) + ':' + String(Math.floor(left%60)).padStart(2,'0');
+  cdBar.style.height = (left / TIME_LIMIT * 100) + '%';
+  cdWrap.classList.toggle('warn', left <= 60 && left > 20);
+  cdWrap.classList.toggle('crit', left <= 20);
+  const whole = Math.ceil(left);
+  if (left <= 10 && whole !== state.tick){
+    state.tick = whole;
+    beep(whole <= 3 ? 1180 : 880, .08, 'square', .05);
+  }
+  if (left <= 0){ beginDeath('overtime', null); return; }
   expWrap.style.transform = e > .66 ? 'scale(' + (1 + Math.sin(state.t*14)*.03).toFixed(3) + ')' : 'scale(1)';
   flashEl.style.opacity = e > .5 ? ((e - .5) * 0.9).toFixed(2) : 0;
 
@@ -1079,6 +1170,17 @@ function startRun(){
   state.exposure = 0;
   state.hasBag = false;
   state.caughtBy = null;
+  state.dieKind = null;
+  state.dieT = 0;
+  state.tick = -1;
+
+  stageEl.style.filter = 'none';
+  cineEl.classList.remove('on');
+  cdWrap.classList.remove('warn','crit');
+  player.obj.rotation.x = 0;
+  const pu = player.obj.userData;
+  pu.hips.position.y = .92; pu.torso.rotation.x = .06; pu.head.rotation.x = 0;
+  pu.armL.rotation.x = pu.armR.rotation.x = pu.legL.rotation.x = pu.legR.rotation.x = 0;
 
   player.pos.copy(START_POS);
   player.yaw = Math.PI * 0.5;
@@ -1093,13 +1195,71 @@ function startRun(){
     n.wp = 1 % n.route.length;
     n.pos.set(n.route[0][0], n.route[0][1]);
     n.obj.position.set(n.pos.x, 0, n.pos.y);
-    n.exposure = 0; n.sees = false; n.wait = 0; n.alertHold = 0;
+    n.exposure = 0; n.alert = 0; n.sees = false; n.wait = 0; n.chaseT = 0;
+    n.yaw = n.homeYaw; n.obj.rotation.y = n.yaw;
+    if (n.seat) setSeated(n, true);
   }
   audio();
   showToast('Bag first — desk 12-C', 3);
 }
 
-function endRun(win){
+function deathSting(kind){
+  const a = audio(); if (!a) return;
+  const notes = kind === 'overtime' ? [174.6, 130.8, 87.3] : [196, 146.8, 98];
+  notes.forEach((f, i) => setTimeout(() => beep(f, .85, 'sawtooth', .055), i * 230));
+  const o = a.createOscillator(), g = a.createGain();
+  o.type = 'sine'; o.frequency.setValueAtTime(70, a.currentTime);
+  o.frequency.exponentialRampToValueAtTime(28, a.currentTime + 2.4);
+  g.gain.setValueAtTime(.0001, a.currentTime);
+  g.gain.linearRampToValueAtTime(.09, a.currentTime + .25);
+  g.gain.exponentialRampToValueAtTime(.0001, a.currentTime + 2.6);
+  o.connect(g); g.connect(a.destination);
+  o.start(); o.stop(a.currentTime + 2.7);
+}
+
+function beginDeath(kind, npc){
+  if (state.mode !== 'play') return;
+  state.mode = 'dying';
+  state.dieKind = kind;
+  state.dieT = 0;
+  state.caughtBy = npc ? (CAUGHT_LINES.find(c => c.who === npc.name) || CAUGHT_LINES[0]) : null;
+
+  hud.classList.remove('live');
+  stageEl.style.filter = 'grayscale(1) contrast(1.08) brightness(.62)';
+  document.getElementById('cineWord').textContent = kind === 'overtime' ? 'OVERTIME' : 'INTERCEPTED';
+  document.getElementById('cineSub').textContent = kind === 'overtime'
+    ? 'the last lift left without you'
+    : (state.caughtBy ? state.caughtBy.who.toLowerCase() + ' got to you first' : 'someone got to you first');
+  cineEl.classList.add('on');
+  deathSting(kind);
+}
+
+// the slow collapse: a faceplant when the lift goes, a slump when you are cornered
+function deathPose(k){
+  const e = k*k*(3-2*k);
+  const u = player.obj.userData;
+  if (state.dieKind === 'overtime'){
+    player.obj.rotation.x = e * 1.42;
+    u.hips.position.y = .92 - e * .16;
+    u.torso.rotation.x = .06 + e * .22;
+    u.head.rotation.x  = e * .25;
+    u.armL.rotation.x = e * .38; u.armR.rotation.x = e * .30;
+    u.legL.rotation.x = -e * .18; u.legR.rotation.x = e * .12;
+  } else {
+    u.hips.position.y = .92 - e * .30;
+    u.torso.rotation.x = .06 + e * .55;
+    u.head.rotation.x  = -e * .5;
+    u.armL.rotation.x = e * .35; u.armR.rotation.x = e * .35;
+    u.legL.rotation.x = e * .26; u.legR.rotation.x = -e * .2;
+  }
+}
+
+function finishDeath(){
+  cineEl.classList.remove('on');
+  endRun(false, true);
+}
+
+function endRun(win, silent){
   state.mode = win ? 'escaped' : 'caught';
   const screen = document.getElementById('endScreen');
   const kicker = document.getElementById('endKicker');
@@ -1123,6 +1283,15 @@ function endRun(win){
       '<div class="stat"><b>' + rank.g + '</b><span>' + rank.n + '</span></div>';
     beep(523,.12,'triangle',.07);
     setTimeout(()=>beep(784,.22,'triangle',.07),130);
+  } else if (state.dieKind === 'overtime'){
+    kicker.textContent = 'Overtime · Floor 12';
+    title.textContent = 'The lift went without you.';
+    body.textContent = 'You are still between the cubicles at 18:36 with your bag on your shoulder. ' +
+      'Somebody notices. The lights stay on. You are here all night.';
+    stats.innerHTML =
+      '<div class="stat"><b>' + timeStr + '</b><span>survived</span></div>' +
+      '<div class="stat"><b>' + (state.hasBag ? 'yes' : 'no') + '</b><span>had your bag</span></div>' +
+      '<div class="stat"><b>18:36</b><span>lift missed</span></div>';
   } else {
     const c = state.caughtBy || CAUGHT_LINES[0];
     kicker.textContent = 'Intercepted · ' + c.who;
@@ -1133,6 +1302,8 @@ function endRun(win){
       '<div class="stat"><b>' + timeStr + '</b><span>survived</span></div>' +
       '<div class="stat"><b>' + (state.hasBag ? 'yes' : 'no') + '</b><span>had your bag</span></div>' +
       '<div class="stat"><b>' + c.who + '</b><span>spotted by</span></div>';
+  }
+  if (!win && !silent){
     beep(196,.5,'sawtooth',.05);
     setTimeout(()=>beep(147,.7,'sawtooth',.05),160);
   }
@@ -1204,8 +1375,23 @@ function updatePlayer(dt){
 }
 
 function updateNPC(n, dt){
-  // movement along the route
-  if (n.speed > 0 && n.route.length > 1){
+  let moving = false;
+
+  // ---- movement: chasing you, walking back to their post, or on patrol ----
+  if (n.chaseT > 0){
+    n.chaseT -= dt;
+    if (n.seated) setSeated(n, false);
+    const dx = n.chase.x - n.pos.x, dz = n.chase.y - n.pos.y;
+    const d = Math.hypot(dx, dz);
+    if (d > 0.7){
+      const step = Math.min(CHASE_SPEED * dt, d);
+      n.pos.x += dx/d * step;
+      n.pos.y += dz/d * step;
+      resolveNPC(n);
+      turnTo(n, Math.atan2(dx, dz), dt * 6);
+      moving = true;
+    }
+  } else if (n.route.length > 1){
     if (n.wait > 0){
       n.wait -= dt;
     } else {
@@ -1219,24 +1405,34 @@ function updateNPC(n, dt){
         const step = Math.min(n.speed * dt, d);
         n.pos.x += dx/d * step;
         n.pos.y += dz/d * step;
-        const target = Math.atan2(dx, dz);
-        let diff = target - n.yaw;
-        while (diff >  Math.PI) diff -= Math.PI*2;
-        while (diff < -Math.PI) diff += Math.PI*2;
-        n.yaw += diff * Math.min(1, dt * 4.5);
+        turnTo(n, Math.atan2(dx, dz), dt * 4.5);
+        moving = true;
       }
     }
+  } else {
+    // stationary posts walk back to where they belong, then settle
+    const dx = n.route[0][0] - n.pos.x, dz = n.route[0][1] - n.pos.y;
+    const d = Math.hypot(dx, dz);
+    if (d > 0.25){
+      const step = Math.min(1.5 * dt, d);
+      n.pos.x += dx/d * step;
+      n.pos.y += dz/d * step;
+      resolveNPC(n);
+      turnTo(n, Math.atan2(dx, dz), dt * 4);
+      moving = true;
+    } else {
+      turnTo(n, n.homeYaw, dt * 2);
+      if (n.seat && !n.seated) setSeated(n, true);
+    }
   }
+
   n.obj.position.set(n.pos.x, 0, n.pos.y);
   n.obj.rotation.y = n.yaw;
 
-  // head scan
+  // ---- head scan ----
   n.scanT += dt;
-  const moving = n.speed > 0 && n.wait <= 0;
-  let scanTarget = moving ? Math.sin(n.scanT * .8) * .35 : Math.sin(n.scanT * .55) * (n.seat ? .62 : .85);
-
-  // if they are onto you, they lock on — which makes it worse, fast
-  if (n.exposure > .35){
+  let scanTarget = moving ? Math.sin(n.scanT * .8) * .35 : Math.sin(n.scanT * .55) * (n.seated ? .62 : .85);
+  if (n.alert > .3){
     const dx = player.pos.x - n.pos.x, dz = player.pos.z - n.pos.y;
     let want = Math.atan2(dx, dz) - n.yaw;
     while (want >  Math.PI) want -= Math.PI*2;
@@ -1247,7 +1443,7 @@ function updateNPC(n, dt){
   n.obj.userData.head.rotation.y = n.headYaw;
   n.cone.rotation.y = n.headYaw;
 
-  if (!n.seat) stepAnim(n.obj, moving ? n.speed : 0, dt, false);
+  if (!n.seated) stepAnim(n.obj, moving ? (n.chaseT > 0 ? CHASE_SPEED : n.speed) : 0, dt, false);
 
   // ---- can they see you? ----
   let sees = false;
@@ -1271,27 +1467,39 @@ function updateNPC(n, dt){
 
   if (sees){
     const prox = 1 - Math.min(1, dist / n.range);
-    const motion = player.crouch ? .42 : (player.speed > 1.2 ? 1.25 : .8);
-    const rate = (0.30 + prox * 0.85) * motion;
-    n.exposure = Math.min(1, n.exposure + rate * dt);
-    n.alertHold = 0.8;
+    const motion = player.crouch ? .45 : (player.speed > 1.2 ? 1.3 : .85);
+    n.alert = Math.min(1, n.alert + (0.55 + prox * 0.9) * motion * dt);
+    // being seen from across the floor only sends them your way
+    n.chase.set(player.pos.x, player.pos.z);
+    if (n.alert > .4) n.chaseT = 4.5;
+    // only someone within arm's reach of you can actually start the conversation
+    if (dist < CATCH_DIST){
+      const close = 1 - dist / CATCH_DIST;
+      n.exposure = Math.min(1, n.exposure + (0.45 + close * 1.15) * (player.crouch ? .72 : 1) * dt);
+    } else {
+      n.exposure = Math.max(0, n.exposure - 0.55 * dt);
+    }
   } else {
-    n.alertHold -= dt;
-    if (n.alertHold <= 0) n.exposure = Math.max(0, n.exposure - 0.42 * dt);
+    n.alert = Math.max(0, n.alert - 0.4 * dt);
+    n.exposure = Math.max(0, n.exposure - 0.7 * dt);
   }
 
-  // cone + marker feedback
-  const heat = n.exposure;
+  // ---- feedback ----
+  const heat = Math.max(n.alert * .55, n.exposure);
   n.cone.material.opacity = .10 + heat * .30;
-  n.cone.material.color.setHex(heat > .6 ? 0xe04b3c : 0xe8a33d);
-  n.mark.material.opacity = heat > .15 ? Math.min(1, (heat - .15) * 2.4) : 0;
+  n.cone.material.color.setHex(n.exposure > .1 ? 0xe04b3c : 0xe8a33d);
+  n.mark.material.opacity = n.alert > .2 ? Math.min(1, (n.alert - .2) * 2.6) : 0;
   n.mark.scale.setScalar(.34 + heat * .3);
-  n.mark.material.color.setHex(heat > .6 ? 0xff5a48 : 0xf0b556);
+  n.mark.material.color.setHex(n.exposure > .1 ? 0xff5a48 : 0xf0b556);
 
-  if (n.exposure >= 1 && state.mode === 'play'){
-    state.caughtBy = CAUGHT_LINES.find(c => c.who === n.name) || CAUGHT_LINES[0];
-    endRun(false);
-  }
+  if (n.exposure >= 1 && state.mode === 'play') beginDeath('caught', n);
+}
+
+function turnTo(n, target, rate){
+  let diff = target - n.yaw;
+  while (diff >  Math.PI) diff -= Math.PI*2;
+  while (diff < -Math.PI) diff += Math.PI*2;
+  n.yaw += diff * Math.min(1, rate);
 }
 
 function updateCamera(dt, menu){
@@ -1315,9 +1523,17 @@ function updateCamera(dt, menu){
     camYaw += diff * Math.min(1, dt * 1.9);
   }
   const yaw = camYaw + camYawManual;
-  const dist = 5.6, height = 3.15;
+  let dist = 5.6, height = 3.15, aim = player.crouch ? 1.0 : 1.45;
 
-  camTarget.set(player.pos.x, (player.crouch ? 1.0 : 1.45), player.pos.z);
+  if (state.mode === 'dying'){
+    const k = Math.min(1, state.dieT / 2.0);
+    const e = k*k*(3-2*k);
+    dist   = 5.6  - e * 2.3;
+    height = 3.15 - e * 1.75;
+    aim    = 1.45 - e * 0.52;
+  }
+
+  camTarget.set(player.pos.x, aim, player.pos.z);
   desiredCam.set(
     player.pos.x - Math.sin(yaw) * dist,
     height,
@@ -1333,7 +1549,7 @@ function updateCamera(dt, menu){
   ray.far = camDist;
   const hit = ray.intersectObjects(occluders, false);
   let use = camDist;
-  if (hit.length) use = Math.max(2.5, hit[0].distance - 0.4);
+  if (hit.length) use = Math.max(state.mode === 'dying' ? 1.8 : 2.5, hit[0].distance - 0.4);
   desiredCam.copy(_a).addScaledVector(_b, use);
   desiredCam.y = Math.max(1.1, Math.min(WALL_H - .25, desiredCam.y));
 
@@ -1364,6 +1580,15 @@ function frame(now){
     updateHUD(dt);
     drawMinimap();
     heartbeat(dt);
+  } else if (state.mode === 'dying'){
+    state.dieT += dt;
+    deathPose(Math.min(1, state.dieT / 1.6));
+    const slow = dt * 0.3;
+    for (const n of npcs) updateNPC(n, slow);
+    camYawManual += slow * 0.5;
+    updateCamera(slow, false);
+    drawMinimap();
+    if (state.dieT > 2.9) finishDeath();
   } else if (state.mode === 'paused'){
     updateCamera(dt, false);
   } else if (state.mode === 'menu'){
