@@ -11,12 +11,17 @@ beyond a single CDN script tag (three.js r128).
 
 ## Controls
 
-| Key | Action |
+Third-person shooter layout: the mouse aims the camera, `WASD` walks relative to it.
+
+| Input | Action |
 | --- | --- |
-| `W` `A` `S` `D` / arrows | walk |
+| Mouse | look around (the page takes pointer lock when you click or start a run) |
+| `W` `A` `S` `D` / arrows | walk, relative to where the camera is pointing |
 | `Shift` | crouch — slower, quieter, low enough to hide behind cubicle partitions |
-| `Q` `E` (or drag) | swing the camera |
-| `R` | restart · `Esc` pause |
+| `Q` `E`, or drag | swing the camera without a locked pointer |
+| `R` | restart · `Esc` pause and release the mouse |
+
+Releasing the pointer pauses the game; click to resume.
 
 ## Rules
 

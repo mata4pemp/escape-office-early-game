@@ -239,9 +239,9 @@
   </div>
 
   <div id="keys" class="plate">
+    <div><kbd>Mouse</kbd> look around</div>
     <div><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move</div>
     <div><kbd>Shift</kbd> crouch &amp; sneak</div>
-    <div><kbd>Q</kbd><kbd>E</kbd> swing camera</div>
     <div><kbd>R</kbd> restart · <kbd>Esc</kbd> pause</div>
   </div>
 
@@ -260,12 +260,12 @@
     </p>
     <div class="rule"></div>
     <div class="ctrlgrid">
-      <div class="ctrl"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd>&nbsp;walk</div>
+      <div class="ctrl"><kbd>Mouse</kbd>&nbsp;look around</div>
+      <div class="ctrl"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd>&nbsp;walk, relative to the camera</div>
       <div class="ctrl"><kbd>Shift</kbd>&nbsp;crouch, quiet, low</div>
-      <div class="ctrl"><kbd>Q</kbd><kbd>E</kbd>&nbsp;swing the camera</div>
       <div class="ctrl"><kbd>R</kbd>&nbsp;restart&nbsp;&nbsp;<kbd>Esc</kbd>&nbsp;pause</div>
     </div>
-    <div class="prompt"><span class="dot"></span> Press Enter to clock out</div>
+    <div class="prompt"><span class="dot"></span> Click or press Enter to clock out</div>
   </div>
 </div>
 
@@ -1359,7 +1359,37 @@ function footstep(dt, speed){
 /* =========================================================
    INPUT
    ========================================================= */
-let camYaw = Math.PI, camYawManual = 0;
+let camYaw = Math.PI, camPitch = -0.12, pointerLocked = false;
+const PITCH_MIN = -0.62, PITCH_MAX = 0.45, MOUSE_SENS = 0.0023;
+
+function lockPointer(){
+  if (!canvas.requestPointerLock) return;
+  try {
+    const r = canvas.requestPointerLock();
+    if (r && r.catch) r.catch(() => {});   // refused (no gesture, or file://) — drag still works
+  } catch(e){}
+}
+document.addEventListener('pointerlockchange', () => {
+  pointerLocked = (document.pointerLockElement === canvas);
+  if (pointerLocked){
+    if (state.mode === 'paused'){ state.mode = 'play'; hideToast(); }
+  } else if (state.mode === 'play'){
+    state.mode = 'paused';
+    showToast('Paused — click to resume', 1e6);
+  }
+});
+document.addEventListener('mousemove', (e) => {
+  if (!pointerLocked) return;
+  camYaw   -= e.movementX * MOUSE_SENS;
+  camPitch -= e.movementY * MOUSE_SENS * .8;
+  camPitch = Math.max(PITCH_MIN, Math.min(PITCH_MAX, camPitch));
+});
+canvas.addEventListener('click', () => {
+  if (state.mode === 'play' || state.mode === 'paused') lockPointer();
+});
+document.getElementById('startScreen').addEventListener('click', () => {
+  if (state.mode === 'menu') startRun();
+});
 window.addEventListener('keydown', (e)=>{
   const k = e.key.toLowerCase();
   keys[k] = true;
@@ -1369,19 +1399,24 @@ window.addEventListener('keydown', (e)=>{
     else if (state.mode === 'caught' || state.mode === 'escaped') startRun();
   }
   if (k === 'r' && (state.mode === 'play' || state.mode === 'paused' || state.mode === 'dying')) startRun();
-  if (k === 'escape' && state.mode === 'play'){ state.mode = 'paused'; showToast('Paused — Esc to resume', 1e6); }
-  else if (k === 'escape' && state.mode === 'paused'){ state.mode = 'play'; hideToast(); }
+  if (k === 'escape' && state.mode === 'play'){
+    state.mode = 'paused';
+    showToast('Paused — click to resume', 1e6);
+    if (document.exitPointerLock) document.exitPointerLock();
+  }
 });
 window.addEventListener('keyup', (e)=>{ keys[e.key.toLowerCase()] = false; });
 window.addEventListener('blur', ()=>{ for (const k in keys) keys[k] = false; });
 
-let dragging = false, lastX = 0;
-canvas.addEventListener('pointerdown', (e)=>{ dragging = true; lastX = e.clientX; });
+let dragging = false, lastX = 0, lastY = 0;
+canvas.addEventListener('pointerdown', (e)=>{ dragging = true; lastX = e.clientX; lastY = e.clientY; });
 window.addEventListener('pointerup', ()=>{ dragging = false; });
 window.addEventListener('pointermove', (e)=>{
-  if (!dragging) return;
-  camYawManual -= (e.clientX - lastX) * 0.006;
-  lastX = e.clientX;
+  if (!dragging || pointerLocked) return;
+  camYaw   -= (e.clientX - lastX) * 0.006;
+  camPitch -= (e.clientY - lastY) * 0.004;
+  camPitch = Math.max(PITCH_MIN, Math.min(PITCH_MAX, camPitch));
+  lastX = e.clientX; lastY = e.clientY;
 });
 
 /* =========================================================
@@ -1540,7 +1575,8 @@ function startRun(){
   player.pos.copy(START_POS);
   player.yaw = Math.PI * 0.5;
   player.speed = 0;
-  camYaw = player.yaw; camYawManual = 0;
+  camYaw = player.yaw; camPitch = -0.12;
+  lockPointer();
 
   bag.visible = true; bagHalo.visible = true; carried.visible = false;
   step1.className = 'step active'; step2.className = 'step';
@@ -1681,8 +1717,8 @@ function updatePlayer(dt){
   if (keys['s'] || keys['arrowdown'])  iz += 1;
   if (keys['a'] || keys['arrowleft'])  ix -= 1;
   if (keys['d'] || keys['arrowright']) ix += 1;
-  if (keys['q']) camYawManual += dt * 1.9;
-  if (keys['e']) camYawManual -= dt * 1.9;
+  if (keys['q']) camYaw += dt * 1.9;
+  if (keys['e']) camYaw -= dt * 1.9;
 
   player.crouch = !!(keys['shift'] || keys['c']);
   const maxSpeed = player.crouch ? SNEAK : WALK;
@@ -1867,15 +1903,11 @@ function updateCamera(dt, menu){
     return;
   }
 
-  // the camera trails the direction you are walking
-  if (player.speed > 0.4){
-    let diff = player.yaw - camYaw;
-    while (diff >  Math.PI) diff -= Math.PI*2;
-    while (diff < -Math.PI) diff += Math.PI*2;
-    camYaw += diff * Math.min(1, dt * 1.9);
-  }
-  const yaw = camYaw + camYawManual;
+  // the camera is yours alone — it never chases your heading, so W always goes
+  // exactly where the camera is pointing
+  const yaw = camYaw;
   let dist = 4.9, height = 2.05, aim = player.crouch ? .95 : 1.28;
+  let pitch = camPitch;
 
   if (state.mode === 'dying'){
     const k = Math.min(1, state.dieT / 2.0);
@@ -1883,12 +1915,13 @@ function updateCamera(dt, menu){
     dist   = 4.9  - e * 1.9;
     height = 2.05 - e * 0.95;
     aim    = 1.45 - e * 0.52;
+    pitch  = camPitch - e * .30;
   }
 
-  camTarget.set(player.pos.x, aim, player.pos.z);
+  camTarget.set(player.pos.x, aim + pitch * 5.2, player.pos.z);
   desiredCam.set(
     player.pos.x - Math.sin(yaw) * dist,
-    height,
+    height - pitch * 1.6,
     player.pos.z - Math.cos(yaw) * dist
   );
 
@@ -1903,7 +1936,7 @@ function updateCamera(dt, menu){
   let use = camDist;
   if (hit.length) use = Math.max(state.mode === 'dying' ? 2.2 : 2.5, hit[0].distance - 0.4);
   desiredCam.copy(_a).addScaledVector(_b, use);
-  desiredCam.y = Math.max(1.1, Math.min(WALL_H - .25, desiredCam.y));
+  desiredCam.y = Math.max(1.0, Math.min(WALL_H - .18, desiredCam.y));
 
   camera.position.lerp(desiredCam, Math.min(1, dt * 7));
   camera.lookAt(camTarget);
@@ -1937,7 +1970,7 @@ function frame(now){
     deathPose(Math.min(1, state.dieT / 1.6));
     const slow = dt * 0.3;
     for (const n of npcs) updateNPC(n, slow);
-    camYawManual += slow * 0.5;
+    camYaw += slow * 0.5;
     updateCamera(slow, false);
     drawMinimap();
     if (state.dieT > 2.9) finishDeath();
@@ -1949,7 +1982,7 @@ function frame(now){
     drawMinimap();
   } else {
     // caught / escaped — hold the scene alive, slow orbit around the player
-    camYawManual += dt * 0.12;
+    camYaw += dt * 0.12;
     updateCamera(dt, false);
     for (const n of npcs) n.obj.userData.phase += dt;
   }
