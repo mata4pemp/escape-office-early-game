@@ -239,8 +239,8 @@
   </div>
 
   <div id="keys" class="plate">
-    <div><kbd>Mouse</kbd> look around</div>
-    <div><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move</div>
+    <div><kbd>Mouse</kbd> turn / look</div>
+    <div><kbd>W</kbd><kbd>S</kbd> walk · <kbd>A</kbd><kbd>D</kbd> strafe</div>
     <div><kbd>Shift</kbd> crouch &amp; sneak</div>
     <div><kbd>R</kbd> restart · <kbd>Esc</kbd> pause</div>
   </div>
@@ -260,8 +260,8 @@
     </p>
     <div class="rule"></div>
     <div class="ctrlgrid">
-      <div class="ctrl"><kbd>Mouse</kbd>&nbsp;look around</div>
-      <div class="ctrl"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd>&nbsp;walk, relative to the camera</div>
+      <div class="ctrl"><kbd>Mouse</kbd>&nbsp;turn, and look up or down</div>
+      <div class="ctrl"><kbd>W</kbd><kbd>S</kbd>&nbsp;forward, back&nbsp;&nbsp;<kbd>A</kbd><kbd>D</kbd>&nbsp;strafe</div>
       <div class="ctrl"><kbd>Shift</kbd>&nbsp;crouch, quiet, low</div>
       <div class="ctrl"><kbd>R</kbd>&nbsp;restart&nbsp;&nbsp;<kbd>Esc</kbd>&nbsp;pause</div>
     </div>
@@ -1107,9 +1107,9 @@ function makeHuman(opts){
   return g;
 }
 
-function stepAnim(h, speed, dt, crouch){
+function stepAnim(h, speed, dt, crouch, stride){
   const u = h.userData;
-  u.phase += dt * (speed > .05 ? 6.5 + speed*1.1 : 0);
+  u.phase += dt * (speed > .05 ? 6.5 + speed*1.1 : 0) * (stride === -1 ? -1 : 1);
   const amp = Math.min(speed / WALK, 1) * (crouch ? .42 : .72);
   const s = Math.sin(u.phase), c = Math.cos(u.phase*2);
   u.legL.rotation.x =  s * amp;
@@ -1137,7 +1137,8 @@ const player = {
   pos: START_POS.clone(),
   yaw: Math.PI,
   speed: 0,
-  crouch: false
+  crouch: false,
+  stride: 1
 };
 scene.add(player.obj);
 
@@ -1723,21 +1724,24 @@ function updatePlayer(dt){
   player.crouch = !!(keys['shift'] || keys['c']);
   const maxSpeed = player.crouch ? SNEAK : WALK;
 
+  // Minecraft: your body faces wherever the mouse is looking, always
+  player.yaw = camYaw;
+
   const len = Math.hypot(ix, iz);
   if (len > 0){
     ix /= len; iz /= len;
-    // input is read in the camera's frame
+    // the camera's own axes. It looks along +(sin, cos), so forward is +(sin, cos)
+    // and screen-right is +(-cos, sin).
     const cy = camYaw;
-    const wx =  ix * Math.cos(cy) - iz * Math.sin(cy);
-    const wz =  ix * Math.sin(cy) + iz * Math.cos(cy);
-    const target = Math.atan2(wx, wz);
-    let diff = target - player.yaw;
-    while (diff >  Math.PI) diff -= Math.PI*2;
-    while (diff < -Math.PI) diff += Math.PI*2;
-    player.yaw += diff * Math.min(1, dt * 12);
+    const fx =  Math.sin(cy), fz = Math.cos(cy);
+    const rx = -Math.cos(cy), rz = Math.sin(cy);
+    const fwd = -iz;                       // W is -1 on the input axis
+    const wx = rx * ix + fx * fwd;
+    const wz = rz * ix + fz * fwd;
     player.speed += (maxSpeed - player.speed) * Math.min(1, dt * 9);
     player.pos.x += wx * player.speed * dt;
     player.pos.z += wz * player.speed * dt;
+    player.stride = fwd >= 0 ? 1 : -1;     // backpedalling runs the walk cycle in reverse
   } else {
     player.speed += (0 - player.speed) * Math.min(1, dt * 14);
     if (player.speed < .02) player.speed = 0;
@@ -1746,7 +1750,7 @@ function updatePlayer(dt){
   resolveCollisions(player.pos);
   player.obj.position.set(player.pos.x, 0, player.pos.z);
   player.obj.rotation.y = player.yaw;
-  stepAnim(player.obj, player.speed, dt, player.crouch);
+  stepAnim(player.obj, player.speed, dt, player.crouch, player.stride);
   footstep(dt, player.speed / WALK);
 
   // bag pickup

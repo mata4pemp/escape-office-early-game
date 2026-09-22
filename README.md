@@ -11,14 +11,17 @@ beyond a single CDN script tag (three.js r128).
 
 ## Controls
 
-Third-person shooter layout: the mouse aims the camera, `WASD` walks relative to it.
+Minecraft layout: the mouse turns you, `WASD` moves your feet. Your body always
+faces wherever the camera is looking, so `W` is always straight ahead and `A`/`D`
+strafe sideways without turning.
 
 | Input | Action |
 | --- | --- |
-| Mouse | look around (the page takes pointer lock when you click or start a run) |
-| `W` `A` `S` `D` / arrows | walk, relative to where the camera is pointing |
+| Mouse | turn, and look up or down (pointer locks when you click or start a run) |
+| `W` / `S` | walk forward / backward |
+| `A` / `D` | strafe left / right |
 | `Shift` | crouch — slower, quieter, low enough to hide behind cubicle partitions |
-| `Q` `E`, or drag | swing the camera without a locked pointer |
+| `Q` `E`, or drag | turn without a locked pointer |
 | `R` | restart · `Esc` pause and release the mouse |
 
 Releasing the pointer pauses the game; click to resume.
