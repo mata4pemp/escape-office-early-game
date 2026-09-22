@@ -1,8 +1,8 @@
 # Quitting Time
 
-A browser stealth game: it's 18:00 on level 12 of a Raffles Place tower, the sun
-is going down over Marina Bay, and you have to get out of the sales bullpen
-without a single manager making eye contact with you.
+A browser stealth game: it's 17:30 on level 12 of a Raffles Place tower, the sun
+is going down over Marina Bay, and you have half an hour to get out of the sales
+bullpen without a single manager making eye contact with you.
 
 **Play:** https://mata4pemp.github.io/escape-office-early-game/
 
@@ -22,6 +22,7 @@ strafe sideways without turning.
 | `A` / `D` | strafe left / right |
 | `Shift` | crouch — slower, quieter, low enough to hide behind cubicle partitions |
 | `Q` `E`, or drag | turn without a locked pointer |
+| `I` | invert forward/back, if W/S feel the wrong way round on your setup |
 | `R` | restart · `Esc` pause and release the mouse |
 
 Releasing the pointer pauses the game; click to resume.
@@ -29,8 +30,9 @@ Releasing the pointer pauses the game; click to resume.
 ## Rules
 
 1. Collect your bag at desk 12-C.
-2. Reach the east stairwell before the last lift goes at 18:36 — a three-minute
-   countdown runs down the right-hand side of the screen.
+2. Reach the east stairwell before 18:00 — a two-and-a-half minute countdown
+   runs down the right-hand side of the screen (one office minute per five real
+   seconds, so 17:30 to 18:00).
 3. Five people can spot you: the regional manager laps the north corridor, a
    supervisor and HR walk the vertical aisles, the floor manager watches from
    the glass office (glass does not block his line of sight), and a colleague
@@ -46,7 +48,9 @@ Line of sight is a real raycast — partitions, pillars, cabinets and plants blo
 it, desks and glass do not. Crouching drops your head below partition height.
 
 Two ways to lose, both with a slow-motion desaturated death shot: **INTERCEPTED**
-if someone corners you, **OVERTIME** if the countdown runs out.
+if someone corners you, **OVERTIME** if 18:00 arrives and you are still inside.
+
+The menu and the on-screen objective are in English and Chinese.
 
 ## The view
 

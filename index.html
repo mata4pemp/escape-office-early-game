@@ -62,7 +62,8 @@
 
   #objective{grid-column:1;grid-row:1;max-width:min(330px,62vw);border-left:2px solid var(--amber);}
   #objTask{font-family:"Barlow Condensed",system-ui,sans-serif;font-size:25px;line-height:1.05;font-weight:600;margin-top:4px;text-wrap:balance;}
-  #objHint{font-size:11px;color:var(--ink-dim);margin-top:6px;line-height:1.5;}
+  #objCn{font-size:11.5px;color:var(--ink-dim);margin-top:6px;line-height:1.7;}
+  .step i{font-style:normal;color:var(--ink-faint);}
   #objSteps{display:flex;flex-direction:column;gap:3px;margin-top:9px;}
   .step{font-size:11px;color:var(--ink-faint);display:flex;gap:7px;align-items:baseline;}
   .step b{color:var(--steel);font-weight:500;}
@@ -160,7 +161,11 @@
   .lede{font-size:13px;line-height:1.75;color:var(--ink-dim);margin:18px 0 0;max-width:46ch;}
   .rule{height:1px;background:linear-gradient(to right,var(--amber),rgba(232,163,61,0));margin:22px 0;}
   .ctrlgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px 22px;}
-  .ctrl{font-size:12px;color:var(--ink-dim);display:flex;align-items:center;gap:2px;}
+  .ctrl{font-size:12px;color:var(--ink-dim);display:flex;align-items:center;gap:2px;flex-wrap:wrap;}
+  .ctrl i{font-style:normal;color:var(--ink-faint);margin-left:5px;}
+  .lede.cn{margin-top:12px;line-height:1.95;color:var(--ink-faint);max-width:40ch;}
+  .lede strong{color:var(--ink);font-weight:500;}
+  #build{margin-top:14px;font-size:10px;color:var(--ink-faint);letter-spacing:.06em;}
   .prompt{
     margin-top:26px;font-family:"Barlow Condensed",system-ui,sans-serif;
     font-size:17px;letter-spacing:.2em;text-transform:uppercase;color:var(--ink);
@@ -198,15 +203,15 @@
   <div id="objective" class="plate">
     <div class="eyebrow">Objective <span class="cn">准点下班</span></div>
     <div id="objTask">Clock out on time</div>
-    <div id="objHint">18:00. Management is still on the floor. Leave the sales bullpen without being seen.</div>
+    <div id="objCn" lang="zh">17:30 了，18:00 前必须离开办公室。</div>
     <div id="objSteps">
-      <div class="step active" id="step1"><b>01</b><span>Collect your bag at desk 12-C</span></div>
-      <div class="step" id="step2"><b>02</b><span>Reach the east stairwell</span></div>
+      <div class="step active" id="step1"><b>01</b><span>Collect your bag at desk 12-C <i lang="zh">拿上 12-C 的背包</i></span></div>
+      <div class="step" id="step2"><b>02</b><span>Reach the east stairwell <i lang="zh">走到东侧楼梯间</i></span></div>
     </div>
   </div>
 
   <div id="clock" class="plate">
-    <div id="clockTime">18:00</div>
+    <div id="clockTime">17:30</div>
     <div id="clockMeta">Level 12 · Marina Bay</div>
     <div id="elapsed">on the floor 0:00</div>
   </div>
@@ -231,9 +236,9 @@
 
   <div id="countdown" class="plate">
     <div id="cdText">
-      <div id="cdLabel">Last lift</div>
-      <div id="cdTime">3:00</div>
-      <div id="cdDest">departs 18:36</div>
+      <div id="cdLabel">Out by 18:00</div>
+      <div id="cdTime">2:30</div>
+      <div id="cdDest">18:00 前下班</div>
     </div>
     <div id="cdBarTrack"><div id="cdBar"></div></div>
   </div>
@@ -242,7 +247,7 @@
     <div><kbd>Mouse</kbd> turn / look</div>
     <div><kbd>W</kbd><kbd>S</kbd> walk · <kbd>A</kbd><kbd>D</kbd> strafe</div>
     <div><kbd>Shift</kbd> crouch &amp; sneak</div>
-    <div><kbd>R</kbd> restart · <kbd>Esc</kbd> pause</div>
+    <div><kbd>I</kbd> invert W/S · <kbd>R</kbd> restart · <kbd>Esc</kbd> pause</div>
   </div>
 
   <div id="toast"></div>
@@ -250,22 +255,31 @@
 
 <div class="screen on" id="startScreen">
   <div class="card">
-    <div class="kicker">Level 12 · Raffles Place, Singapore · Friday</div>
+    <div class="kicker">Level 12 · Raffles Place, Singapore · Friday 周五</div>
     <h1>Quitting Time<span class="thin">你能准点下班吗？</span></h1>
     <p class="lede">
-      Six o'clock, and the sun is going down over Marina Bay. Your bag is still on desk 12-C,
-      the regional manager is doing his last lap of the bullpen, and the last lift goes at
-      18:36. Getting clocked from across the floor only brings them walking — it is the one
-      who reaches you that costs you your evening. Miss the lift and you are here all night.
+      It is <strong>17:30</strong> and the sun is going down over Marina Bay. You have half an
+      hour to be out of the building. Your bag is still on desk 12-C, the regional manager is
+      doing his last lap of the bullpen. Being clocked from across the floor only brings
+      someone walking — it is the one who <em>reaches</em> you that costs you your evening.
+      Still here at 18:00 and you are here all night.
+    </p>
+    <p class="lede cn" lang="zh">
+      现在是 <strong>17:30</strong>，夕阳正落在滨海湾。你有半小时离开这栋楼。背包还在 12-C 工位上，
+      区域经理正在办公区做最后一轮巡视。被远处看到只会让人朝你走过来 —— 真正要命的是走到你面前的那一个。
+      18:00 还没走成，今晚就别想下班了。
     </p>
     <div class="rule"></div>
     <div class="ctrlgrid">
-      <div class="ctrl"><kbd>Mouse</kbd>&nbsp;turn, and look up or down</div>
-      <div class="ctrl"><kbd>W</kbd><kbd>S</kbd>&nbsp;forward, back&nbsp;&nbsp;<kbd>A</kbd><kbd>D</kbd>&nbsp;strafe</div>
-      <div class="ctrl"><kbd>Shift</kbd>&nbsp;crouch, quiet, low</div>
-      <div class="ctrl"><kbd>R</kbd>&nbsp;restart&nbsp;&nbsp;<kbd>Esc</kbd>&nbsp;pause</div>
+      <div class="ctrl"><kbd>Mouse</kbd>&nbsp;turn &amp; look&nbsp;<i lang="zh">鼠标转身视角</i></div>
+      <div class="ctrl"><kbd>W</kbd><kbd>S</kbd>&nbsp;forward, back&nbsp;<i lang="zh">前进后退</i></div>
+      <div class="ctrl"><kbd>A</kbd><kbd>D</kbd>&nbsp;strafe sideways&nbsp;<i lang="zh">左右横移</i></div>
+      <div class="ctrl"><kbd>Shift</kbd>&nbsp;crouch &amp; sneak&nbsp;<i lang="zh">蹲下潜行</i></div>
+      <div class="ctrl"><kbd>I</kbd>&nbsp;invert forward/back&nbsp;<i lang="zh">前后反转</i></div>
+      <div class="ctrl"><kbd>R</kbd>&nbsp;restart&nbsp;<i lang="zh">重来</i>&nbsp;&nbsp;<kbd>Esc</kbd>&nbsp;pause&nbsp;<i lang="zh">暂停</i></div>
     </div>
-    <div class="prompt"><span class="dot"></span> Click or press Enter to clock out</div>
+    <div class="prompt"><span class="dot"></span> Click or press Enter to clock out · 点击开始</div>
+    <div id="build">build 6 — 17:30 start · mouse-look · if this looks old, hard-refresh (Shift-Cmd-R, or Ctrl-Shift-R)</div>
   </div>
 </div>
 
@@ -303,7 +317,7 @@ const PLAYER_R = 0.36;
 const WALK = 3.5, SNEAK = 1.55;
 const EYE_STAND = 1.58, EYE_CROUCH = 0.86;
 const EXIT_X1 = 18.5, EXIT_X2 = 23.5;
-const TIME_LIMIT = 180;   // real seconds until the last lift goes — 36 office minutes
+const TIME_LIMIT = 150;   // 30 office minutes: 17:30 on the clock, out by 18:00
 const CATCH_DIST = 3.4;   // being clocked from across the floor only brings them walking;
                           // only someone this close can actually corner you
 const CHASE_SPEED = 2.25;
@@ -311,10 +325,10 @@ const BAG_POS = new THREE.Vector3(-15.9, 0.97, 13.32);
 const START_POS = new THREE.Vector3(-14.5, 0, 11.6);
 
 const RANKS = [
-  { t: 78,  g:'S', n:'Ghost of Level 12',  d:'Nobody can prove you were ever here after 17:59.' },
-  { t: 108, g:'A', n:'Clean exit',          d:'Bag, stairwell, gone. Textbook.' },
-  { t: 150, g:'B', n:'Slightly sweaty',     d:'You made it, but you took the long way round.' },
-  { t: 1e9, g:'C', n:'Technically on time', d:'The lift doors closed at 18:0-something. It counts.' }
+  { t: 55,  g:'S', n:'Ghost of Level 12',  d:'Nobody can prove you were ever here after 17:31.' },
+  { t: 80,  g:'A', n:'Clean exit',          d:'Bag, stairwell, gone. Textbook.' },
+  { t: 112, g:'B', n:'Slightly sweaty',     d:'You made it, but you took the long way round.' },
+  { t: 1e9, g:'C', n:'Technically on time', d:'You hit the stairwell at 17:59-something. It counts.' }
 ];
 
 const CAUGHT_LINES = [
@@ -341,6 +355,8 @@ const state = {
 };
 
 const keys = Object.create(null);
+let invertFwd = false;
+try { invertFwd = localStorage.getItem('qt_invert') === '1'; } catch(e){}
 const colliders = [];      // {x1,z1,x2,z2}
 const occluders = [];      // meshes that block line of sight
 const mapRects  = [];      // {x1,z1,x2,z2,kind}
@@ -1376,7 +1392,7 @@ document.addEventListener('pointerlockchange', () => {
     if (state.mode === 'paused'){ state.mode = 'play'; hideToast(); }
   } else if (state.mode === 'play'){
     state.mode = 'paused';
-    showToast('Paused — click to resume', 1e6);
+    showToast('Paused — click to resume · 已暂停', 1e6);
   }
 });
 document.addEventListener('mousemove', (e) => {
@@ -1400,9 +1416,14 @@ window.addEventListener('keydown', (e)=>{
     else if (state.mode === 'caught' || state.mode === 'escaped') startRun();
   }
   if (k === 'r' && (state.mode === 'play' || state.mode === 'paused' || state.mode === 'dying')) startRun();
+  if (k === 'i'){
+    invertFwd = !invertFwd;
+    try { localStorage.setItem('qt_invert', invertFwd ? '1' : '0'); } catch(e){}
+    showToast(invertFwd ? 'Forward/back inverted · 前后已反转' : 'Forward/back normal · 前后已还原', 2.2);
+  }
   if (k === 'escape' && state.mode === 'play'){
     state.mode = 'paused';
-    showToast('Paused — click to resume', 1e6);
+    showToast('Paused — click to resume · 已暂停', 1e6);
     if (document.exitPointerLock) document.exitPointerLock();
   }
 });
@@ -1443,10 +1464,10 @@ const cineEl = document.getElementById('cine');
 const CIRC = 2 * Math.PI * 42;
 
 // the wall clock runs one office minute every five real seconds
+const CLOCK_START = 17*60 + 30;          // the shift clock reads 17:30 at kickoff
 function clockStr(){
-  const total = Math.floor(state.t / 5);
-  const h = 18 + Math.floor(total / 60);
-  return h + ':' + String(total % 60).padStart(2,'0');
+  const m = CLOCK_START + Math.floor(state.t / 5);
+  return Math.floor(m / 60) + ':' + String(m % 60).padStart(2,'0');
 }
 
 let toastTimer = 0;
@@ -1582,6 +1603,7 @@ function startRun(){
   bag.visible = true; bagHalo.visible = true; carried.visible = false;
   step1.className = 'step active'; step2.className = 'step';
   objTask.textContent = 'Clock out on time';
+  document.getElementById('objCn').textContent = '17:30 了，18:00 前必须离开办公室。';
 
   for (const n of npcs){
     n.wp = 1 % n.route.length;
@@ -1592,7 +1614,7 @@ function startRun(){
     if (n.seat) setSeated(n, true);
   }
   audio();
-  showToast('Bag first — desk 12-C', 3);
+  showToast('Bag first — desk 12-C · 先去拿背包', 3);
 }
 
 function deathSting(kind){
@@ -1620,8 +1642,8 @@ function beginDeath(kind, npc){
   stageEl.style.filter = 'grayscale(1) contrast(1.08) brightness(.62)';
   document.getElementById('cineWord').textContent = kind === 'overtime' ? 'OVERTIME' : 'INTERCEPTED';
   document.getElementById('cineSub').textContent = kind === 'overtime'
-    ? 'the last lift left without you'
-    : (state.caughtBy ? state.caughtBy.who.toLowerCase() + ' got to you first' : 'someone got to you first');
+    ? '\u6ca1\u80fd\u51c6\u70b9\u4e0b\u73ed \u00b7 you did not make it out by six'
+    : '\u88ab\u903c\u5230\u4e86 \u00b7 ' + (state.caughtBy ? state.caughtBy.who.toLowerCase() + ' got to you first' : 'someone got to you first');
   cineEl.classList.add('on');
   deathSting(kind);
 }
@@ -1669,7 +1691,7 @@ function endRun(win, silent){
     kicker.textContent = 'Stairwell · Level 12';
     title.textContent = 'You got out.';
     body.textContent = 'The fire door shuts behind you and the bay is still orange through the stairwell window. ' +
-      'Nobody said your name once. ' + rank.d;
+      'Nobody said your name once. ' + rank.d + ' \u4f60\u51c6\u70b9\u4e0b\u73ed\u4e86\u3002';
     stats.innerHTML =
       '<div class="stat"><b>' + timeStr + '</b><span>time on floor</span></div>' +
       '<div class="stat"><b>' + clockStr() + '</b><span>clocked out</span></div>' +
@@ -1677,20 +1699,21 @@ function endRun(win, silent){
     beep(523,.12,'triangle',.07);
     setTimeout(()=>beep(784,.22,'triangle',.07),130);
   } else if (state.dieKind === 'overtime'){
-    kicker.textContent = 'Overtime · Level 12';
-    title.textContent = 'The lift went without you.';
-    body.textContent = 'You are still between the cubicles at 18:36 with your bag on your shoulder. ' +
-      'Somebody notices. The lights stay on. You are here all night.';
+    kicker.textContent = 'Overtime · Level 12 · 加班';
+    title.textContent = 'Six o\u2019clock came and went.';
+    body.textContent = 'It is 18:00 and you are still between the cubicles with your bag on your shoulder. ' +
+      'Somebody notices. The lights stay on. You are here all night. \u5230\u70b9\u4e86\uff0c\u4f60\u8fd8\u5728\u529e\u516c\u533a\u3002\u4eca\u665a\u522b\u60f3\u8d70\u4e86\u3002';
     stats.innerHTML =
       '<div class="stat"><b>' + timeStr + '</b><span>survived</span></div>' +
       '<div class="stat"><b>' + (state.hasBag ? 'yes' : 'no') + '</b><span>had your bag</span></div>' +
-      '<div class="stat"><b>18:36</b><span>lift missed</span></div>';
+      '<div class="stat"><b>18:00</b><span>deadline missed</span></div>';
   } else {
     const c = state.caughtBy || CAUGHT_LINES[0];
     kicker.textContent = 'Intercepted · ' + c.who;
     title.textContent = 'Got a second?';
     body.textContent = c.line + ' It is ' + clockStr() +
-      '. The quick chat lasts fifty minutes. You will try again tomorrow.';
+      '. The quick chat lasts fifty minutes. You will try again tomorrow. ' +
+      '\u201c\u5360\u7528\u4f60\u4e00\u5206\u949f\u201d\u2014\u2014\u4e94\u5341\u5206\u949f\u540e\u3002';
     stats.innerHTML =
       '<div class="stat"><b>' + timeStr + '</b><span>survived</span></div>' +
       '<div class="stat"><b>' + (state.hasBag ? 'yes' : 'no') + '</b><span>had your bag</span></div>' +
@@ -1735,7 +1758,7 @@ function updatePlayer(dt){
     const cy = camYaw;
     const fx =  Math.sin(cy), fz = Math.cos(cy);
     const rx = -Math.cos(cy), rz = Math.sin(cy);
-    const fwd = -iz;                       // W is -1 on the input axis
+    const fwd = invertFwd ? iz : -iz;      // W is -1 on the input axis
     const wx = rx * ix + fx * fwd;
     const wz = rz * ix + fz * fwd;
     player.speed += (maxSpeed - player.speed) * Math.min(1, dt * 9);
@@ -1761,7 +1784,8 @@ function updatePlayer(dt){
       bag.visible = false; bagHalo.visible = false; carried.visible = true;
       step1.className = 'step done'; step2.className = 'step active';
       objTask.textContent = 'Reach the stairwell';
-      showToast('Bag. Now the east stairwell.', 3);
+      document.getElementById('objCn').textContent = '拿到背包了，18:00 前走到东侧楼梯间。';
+      showToast('Bag. Now the east stairwell · 去东侧楼梯间', 3);
       beep(660,.1,'triangle',.06);
       setTimeout(()=>beep(880,.16,'triangle',.05),90);
     }
