@@ -1,7 +1,10 @@
 # Quitting Time
 
-A browser stealth game: it's 18:00 on floor 12 and you have to get out of the
-sales bullpen without a single manager making eye contact with you.
+A browser stealth game: it's 18:00 on level 12 of a Raffles Place tower, the sun
+is going down over Marina Bay, and you have to get out of the sales bullpen
+without a single manager making eye contact with you.
+
+**Play:** https://mata4pemp.github.io/escape-office-early-game/
 
 **Play:** open `index.html` in any modern browser. No build step, no dependencies
 beyond a single CDN script tag (three.js r128).
@@ -37,8 +40,19 @@ it, desks and glass do not. Crouching drops your head below partition height.
 Two ways to lose, both with a slow-motion desaturated death shot: **INTERCEPTED**
 if someone corners you, **OVERTIME** if the countdown runs out.
 
+## The view
+
+Everything outside the glass is real geometry, not a backdrop, so it parallaxes
+as you move: Marina Bay Sands with the SkyPark across its three towers, the
+ArtScience Museum, the Singapore Flyer, the Gardens by the Bay supertrees, the
+Esplanade domes, Raffles Place towers with lit window grids, and the bay itself
+under a sunset gradient. The office sits 45 m up, so you look down on the
+neighbouring rooftops — walk to the glass to see the full skyline.
+
 ## Structure
 
 Single file. `index.html` holds the markup, the HUD styles and the whole game:
-procedural canvas textures, the office geometry, the vision/detection model, the
-minimap and a small WebAudio synth. There are no image or model assets.
+procedural canvas textures, the office geometry, the city, the vision/detection
+model, the minimap and a small WebAudio synth. There are no image or model
+assets — every texture is drawn to a canvas at load time and every character is
+composed from spheres and tapered cylinders.
